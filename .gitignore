@@ -1,0 +1,22 @@
+# Environnement Python local
+.venv/
+
+# Config sensible
+config.env
+
+# Fichiers temporaires et caches
+**/__pycache__/
+*.pyc
+*.pyo
+
+# Données d'entrée/sortie volumineuses
+csv_fr_csv_list/input/*
+csv_fr_csv_list/output/*
+csv_outlook/output/*
+
+# Fichiers générés
+*.csv
+*.vcf
+
+# macOS metadata
+.DS_Store

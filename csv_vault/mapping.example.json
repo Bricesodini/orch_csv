@@ -1,0 +1,78 @@
+{
+  "csv_delimiter": "auto",
+  "csv_encoding": "utf-8-sig",
+  "aliases": {
+    "id_mslist": [
+      "ID",
+      "Id",
+      "id",
+      "ItemId",
+      "EntryID"
+    ],
+    "nom": [
+      "Nom",
+      "Name",
+      "Full Name",
+      "Contact",
+      "Libellé",
+      "Raison sociale"
+    ],
+    "email": [
+      "Email",
+      "E-mail",
+      "Courriel",
+      "Mail",
+      "Adresse mail",
+      "Mail contact",
+      "Mail établissement3"
+    ],
+    "telephone": [
+      "Téléphone",
+      "Telephone",
+      "Tel",
+      "Phone",
+      "Mobile",
+      "Portable"
+    ],
+    "organisation": [
+      "Organisation",
+      "Société",
+      "Entreprise",
+      "Company",
+      "Groupe"
+    ],
+    "groupes": [
+      "Groupes",
+      "Tags",
+      "Labels",
+      "Listes",
+      "Segments"
+    ]
+  },
+  "extras": "all",
+  "list_fields": {
+    "groupes": true
+  },
+  "transforms": {
+    "normalize_phone_fr": true
+  },
+  "required_fields": ["Nom", "Prénom", "organisation"],
+  "preserve_keys": [
+    "notes",
+    "custom_tags"
+  ],
+  "projects": {
+    "projetX": {
+      "aliases": {
+        "nom": [
+          "Nom affiché",
+          "Intitulé"
+        ],
+        "email": [
+          "Email principal",
+          "Courriel principal"
+        ]
+      }
+    }
+  }
+}

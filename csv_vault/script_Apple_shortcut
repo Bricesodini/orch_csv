@@ -1,0 +1,54 @@
+set -euo pipefail
+CSV="${1-}"           # argument 1 = chemin du CSV
+PREFIX_RAW="${2-}"    # argument 2 = texte choisi dans la liste (ex. "Ville d’Annonay")
+LOG="$HOME/Desktop/shortcut_csv2obsidian.log"
+
+{
+  echo "==== $(date) ===="
+  echo "Argument reçu (CSV): $CSV"
+  echo "Argument reçu (PREFIX): ${PREFIX_RAW:-<vide>}"
+
+  if [[ -z "$CSV" ]]; then
+    echo "ERREUR: aucun argument CSV reçu. Dans l'action Shell: Entrée = [CSV, Élément choisi], Passer l'entrée = En arguments."
+    exit 64
+  fi
+  if [[ ! -f "$CSV" ]]; then
+    echo "ERREUR: le chemin ne pointe pas vers un fichier: $CSV"
+    exit 65
+  fi
+
+  # Trouver python3
+  if [[ -x /opt/homebrew/bin/python3 ]]; then PY=/opt/homebrew/bin/python3
+  elif command -v python3 >/dev/null 2>&1; then PY="$(command -v python3)"
+  else
+    echo "ERREUR: Python3 introuvable."
+    exit 1
+  fi
+  echo "Python: $PY ($("$PY" -V 2>&1))"
+
+  SCRIPT="$HOME/01_ai-stack/scripts/csv_vault/csv_to_obsidian_contacts.py"
+  # Préfère mapping.json s'il existe, sinon mapping.example.json
+  if [[ -f "$HOME/01_ai-stack/scripts/csv_vault/mapping.json" ]]; then
+    MAPPING="$HOME/01_ai-stack/scripts/csv_vault/mapping.json"
+  else
+    MAPPING="$HOME/01_ai-stack/scripts/csv_vault/mapping.example.json"
+  fi
+  VAULT_NAME="Brice knowledge"
+  OUT_SUBPATH="Projets/MJC/Contacts"
+
+  [[ -f "$SCRIPT" ]] && echo "Script OK: $SCRIPT" || { echo "ERREUR: script introuvable"; exit 2; }
+  [[ -f "$MAPPING" ]] && echo "Mapping OK: $MAPPING" || { echo "ERREUR: mapping introuvable"; exit 3; }
+  echo "Coffre iCloud: $VAULT_NAME — Sous-dossier: $OUT_SUBPATH"
+
+  # Lancer l'import avec le préfixe (zéro-padding configurable côté --id-pad)
+  echo ">>> Lancement…"
+  "$PY" "$SCRIPT" \
+    --csv "$CSV" \
+    --vault-name "$VAULT_NAME" \
+    --out-subpath "$OUT_SUBPATH" \
+    --config "$MAPPING" \
+    --id-prefix "${PREFIX_RAW:-}" \
+    --id-pad 3 \
+    --id-fallback hash \
+    --log-level INFO
+} | tee -a "$LOG"
