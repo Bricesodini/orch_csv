@@ -8,15 +8,24 @@ config.env
 **/__pycache__/
 *.pyc
 *.pyo
+.pytest_cache/
+.mypy_cache/
+.coverage
 
-# Données d'entrée/sortie volumineuses
-csv_fr_csv_list/input/*
-csv_fr_csv_list/output/*
-csv_outlook/output/*
+# Données d'entrée/sortie runtime
+csv_fr_csv_list/input/
+csv_fr_csv_list/output/
+csv_outlook/input/
+csv_outlook/output/
 
 # Fichiers générés
-*.csv
+*__transformed.csv
+*_outlook.csv
 *.vcf
+
+# IDE
+.vscode/
+.idea/
 
 # macOS metadata
 .DS_Store
