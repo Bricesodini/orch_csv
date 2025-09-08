@@ -1,8 +1,11 @@
 # orch_csv — Orchestrateur de flux CSV (macOS)
 
+**Version :** v1.0.0 — voir `CHANGELOG.md` pour l’historique des versions.
+
 Outils et scripts pour orchestrer des conversions et synchronisations de contacts à partir de CSV : vCard pour Apple Contacts, notes Obsidian, et import Exchange Online. Un menu macOS (AppleScript) pilote les étapes courantes.
 
 ## Vue d’ensemble
+
 - `orchestrateur.zsh` ouvre un menu avec deux entrées principales :
   - « Microsoft List » : traite un CSV exporté depuis Microsoft Lists.
     - Sorties possibles : `VCF (Apple Contacts)`, `Obsidian Vault`, `Exchange`.
@@ -10,12 +13,22 @@ Outils et scripts pour orchestrer des conversions et synchronisations de contact
 - `bootstrap.zsh` prépare l’environnement (Python venv + dépendances, PowerShell/ExchangeOnlineManagement si présent).
 
 Sous-dossiers :
+
 - `csv_outlook/` : conversion CSV → vCard (`.vcf`) et CSV Outlook.
 - `csv_vault/` : génération de notes Obsidian par contact (frontmatter YAML configurable).
 - `csv_fr_csv_list/` : normalisation des CSV officiels (Annuaire Éducation) vers un format « Microsoft Lists friendly ».
 - `csv_exchange/` : script PowerShell pour synchroniser la GAL Exchange Online à partir d’un CSV.
 
+## Cas d’usage typiques
+
+- **Importer une liste Microsoft List dans Exchange Online**  
+  Exemple : charger un CSV d’établissements scolaires, générer un fichier VCF pour Apple Contacts, créer des notes dans Obsidian, et mettre à jour les contacts Exchange.
+
+- **Mettre à jour la GAL à partir de données publiques**  
+  Exemple : télécharger le fichier des écoles depuis `data.gouv.fr`, le normaliser, le copier sur le Bureau, puis lancer un import Exchange avec visibilité des logs.
+
 ## Prérequis
+
 - macOS (pour les boîtes de dialogue AppleScript et l’ouverture de Terminal/Finder).
 - Python 3 (installé par défaut sur macOS récents) ; le script crée un venv local `./.venv`.
 - `pandas` et dépendances : installées automatiquement via `bootstrap.zsh` (depuis `csv_fr_csv_list/requirements.txt`).
@@ -24,23 +37,40 @@ Sous-dossiers :
   - Module `ExchangeOnlineManagement` : installé dans le scope utilisateur par `bootstrap.zsh` ou via `Install-Module`.
 
 ## Démarrage rapide
-1) Facultatif : exécuter l’installation locale
+
+1. Facultatif : exécuter l’installation locale
+
 ```
 ./bootstrap.zsh
 ```
-2) Lancer l’orchestrateur
+
+2. Lancer l’orchestrateur
+
 ```
 ./orchestrateur.zsh
 ```
-3) Choisir un flux :
+
+3. Choisir un flux :
+
 - « Microsoft List » puis :
   - `VCF (Apple Contacts)` → produit `..._contacts.vcf` et le copie dans `OUTPUT_DIR`.
   - `Obsidian Vault` → crée/mettre à jour des notes Markdown dans un coffre Obsidian.
   - `Exchange` → appelle PowerShell pour créer/mettre à jour des Mail Contacts dans Exchange Online.
 - « data.gouv.fr » → nécessite `DATA_GOUV_URL` dans `config.env` (voir ci‑dessous).
 
+### Schéma des flux
+
+[Microsoft List CSV] –> [Orchestrateur]
+|–(VCF)–> [Apple Contacts]
+|–(Notes)–> [Obsidian]
+|–(Exchange)–> [GAL mise à jour]
+
+[data.gouv.fr CSV] –> [Téléchargement] –> [Normalisation] –> [Copie Bureau] –> (Exchange)
+
 ## Configuration (`config.env`)
+
 Créer un fichier `config.env` à la racine si besoin ; variables supportées (toutes optionnelles) :
+
 - `OUTPUT_DIR` : dossier de sortie par défaut pour les artefacts (défaut : `~/Desktop`).
 - `VAULT_DIR` : chemin absolu du coffre Obsidian cible (alternative à `VAULT_NAME`).
 - `VAULT_NAME` : nom du coffre Obsidian dans iCloud Drive (`~/Library/Mobile Documents/iCloud~md~obsidian/Documents/<vault>`).
@@ -54,6 +84,7 @@ Créer un fichier `config.env` à la racine si besoin ; variables supportées 
 - `SUBCHOICE` : pour automatiser le sous-choix sans GUI (`VCF`, `Obsidian`, `Exchange`).
 
 Exemple minimal :
+
 ```
 OUTPUT_DIR="$HOME/Desktop"
 VAULT_NAME="Brice knowledge"
@@ -64,16 +95,25 @@ EXCHANGE_ENABLE_REMOVAL=false
 EXCHANGE_HARD_DELETE=false
 ```
 
+## Validation et tests
+
+- **Obsidian** : utiliser `--dry-run` pour vérifier les notes générées sans écrire dans le vault.
+- **Exchange** : lancer le script PowerShell sans `-Apply` pour simuler l’import et vérifier les actions prévues.
+- **Flux complet** : passer un fichier CSV de test à `orchestrateur.zsh` avec `SUBCHOICE` défini pour éviter les dialogues.
+
 ## Flux « Microsoft List »
+
 Après sélection du CSV :
 
-1) Générer VCF (Apple Contacts)
+1. Générer VCF (Apple Contacts)
+
 - Script : `csv_outlook/csv_contact_batch.py`
 - Détection d’encodage/délimiteur, mapping de colonnes usuelles (Prénom, Nom, Organisation, Mails, Tels…),
   catégories vCard à partir de `Zone_Com`/`Département`, UID stable.
 - Sortie : `nom_source_contacts.vcf` (copié dans `OUTPUT_DIR`).
 
-2) Générer des notes Obsidian
+2. Générer des notes Obsidian
+
 - Script : `csv_vault/csv_to_obsidian_contacts.py`
 - Mapping flexible via JSON : `csv_vault/mapping.example.json` (colonnes alias, champs liste, règles de merge, normalisation tel FR, champs requis).
 - Options utiles :
@@ -81,7 +121,8 @@ Après sélection du CSV :
   - `--dry-run` pour prévisualiser.
   - `--id-prefix`/`--id-fallback` pour composer des identifiants lisibles.
 
-3) Importer vers Exchange Online
+3. Importer vers Exchange Online
+
 - Script : `csv_exchange/sync_gal_by_id.ps1` (appelé via `pwsh`).
 - Principe :
   - Clé d’unicité : `CustomAttribute3 = "<ListName>:<ID>"` (ListName dérivé du nom de fichier CSV).
@@ -91,13 +132,15 @@ Après sélection du CSV :
 - Paramètres clés : `-CsvPath <fichier> [-Apply] [-EnableRemoval] [-HardDelete] [-SmtpDomain <domaine>]`.
 
 ## Flux « data.gouv.fr » → Exchange
-1) Téléchargement du CSV depuis `DATA_GOUV_URL` vers `csv_fr_csv_list/input/`.
-2) Normalisation : `csv_fr_csv_list/csv_fr_csv_list.py`
+
+1. Téléchargement du CSV depuis `DATA_GOUV_URL` vers `csv_fr_csv_list/input/`.
+2. Normalisation : `csv_fr_csv_list/csv_fr_csv_list.py`
    - Nettoyage CP et téléphones FR, enrichissement « Niveau », tags `Zone_Com` (proximité/périphérique), filtrage géographique, etc.
    - Export `…__transformed.csv` (UTF‑8 BOM, séparateur `,`, guillemets sur toutes les cellules) dans `csv_fr_csv_list/output/`.
-3) Copie du CSV transformé dans `OUTPUT_DIR` et import Exchange (cf. ci‑dessus).
+3. Copie du CSV transformé dans `OUTPUT_DIR` et import Exchange (cf. ci‑dessus).
 
 ## Détails utiles
+
 - Environnement Python :
   - Créé/enrichi automatiquement au premier lancement ou via `bootstrap.zsh`.
   - `pandas` est requis pour les transformations `csv_fr_csv_list`.
@@ -107,7 +150,17 @@ Après sélection du CSV :
 - Automatisation :
   - `orchestrateur.zsh` accepte un chemin CSV en argument (ex. depuis Raccourci/Automator) et peut sauter le sous-menu via `SUBCHOICE`.
 
+**Création d’un raccourci macOS** :
+
+1. Action “Demander un fichier” (type : document CSV).
+2. Action “Choisir dans une liste” : valeurs `VCF`, `Obsidian`, `Exchange`.
+3. Action “Exécuter un script Shell” :
+   - Shell : `/bin/zsh`
+   - Script : `SUBCHOICE="(Choix)" "/chemin/vers/orchestrateur.zsh" "(Fichier)"`
+   - Utiliser les _pills_ pour insérer le choix et le chemin de fichier.
+
 ## Structure du dépôt
+
 ```
 bootstrap.zsh
 orchestrateur.zsh
@@ -127,12 +180,25 @@ csv_exchange/
 ```
 
 ## Dépannage
+
 - `pandas introuvable` : exécuter `./bootstrap.zsh` ou `python3 -m pip install -r csv_fr_csv_list/requirements.txt`.
 - `pwsh introuvable` : `brew install --cask powershell` (ou installer depuis Microsoft Docs).
 - `ExchangeOnlineManagement` manquant : `Install-Module ExchangeOnlineManagement -Scope CurrentUser` dans `pwsh`.
 - Encodage CSV : pour Obsidian, régler `csv_encoding` dans le mapping si besoin (`utf-8-sig`, `latin-1`, …).
 - Aucune action lors de l’import Exchange : vérifier que le CSV contient des e‑mails valides et, pour le diff par ID, une colonne `ID`.
 
-—
-Mainteneur : Brice Sodini — Utilisation personnelle/équipe ; adaptez les mappings selon vos sources.
+| Message d’erreur                             | Cause probable                                    | Solution recommandée                                         |
+| -------------------------------------------- | ------------------------------------------------- | ------------------------------------------------------------ |
+| `pandas introuvable`                         | venv non initialisé ou requirements non installés | Lancer `./bootstrap.zsh`                                     |
+| `pwsh introuvable`                           | PowerShell 7 non installé                         | `brew install --cask powershell`                             |
+| `ExchangeOnlineManagement` manquant          | Module non installé dans PowerShell               | `Install-Module ExchangeOnlineManagement -Scope CurrentUser` |
+| Encodage incorrect lors de l’import Obsidian | CSV dans un autre encodage                        | Ajuster `csv_encoding` dans le mapping JSON                  |
 
+— Mainteneur : Brice Sodini
+— Utilisation personnelle/équipe ; adaptez les mappings selon vos sources.
+
+## Licence
+
+Utilisation personnelle et en équipe.  
+Libre de modification et redistribution interne.  
+Pour un usage public, veuillez demander l’accord préalable.
